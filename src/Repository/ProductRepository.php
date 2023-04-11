@@ -44,6 +44,7 @@ class ProductRepository extends ServiceEntityRepository
         $offset = ($page - 1) * $limit;
 
         return $this->createQueryBuilder('p')
+            ->orderBy('p.id', 'ASC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()

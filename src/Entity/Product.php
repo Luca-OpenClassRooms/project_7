@@ -2,9 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\ProductRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\ProductRepository;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
@@ -12,16 +14,24 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    public ?int $id = null;
+    #[Groups(['product:read'])]
+    private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    public ?string $name = null;
+    #[Assert\NotBlank]
+    #[Assert\Length(min: 2, max: 255)]
+    #[Groups(['product:read'])]
+    private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    public ?string $description = null;
+    #[Groups(['product:read'])]
+    private ?string $description = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2)]
-    public ?string $price = null;
+    #[Assert\NotBlank]
+    #[Assert\Positive]
+    #[Groups(['product:read'])]
+    private ?string $price = null;
 
     public function getId(): ?int
     {

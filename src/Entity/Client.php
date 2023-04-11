@@ -27,6 +27,9 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?string $password = null;
 
+    #[ORM\OneToMany(mappedBy: 'client', targetEntity: ClientUser::class)]
+    private ?\Doctrine\ORM\PersistentCollection $clients = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -40,6 +43,18 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): self
     {
         $this->email = $email;
+
+        return $this;
+    }
+
+    public function getClients(): ?\Doctrine\ORM\PersistentCollection
+    {
+        return $this->clients;
+    }
+
+    public function setClients(?\Doctrine\ORM\PersistentCollection $clients): self
+    {
+        $this->clients = $clients;
 
         return $this;
     }

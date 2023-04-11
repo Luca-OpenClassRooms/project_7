@@ -12,6 +12,7 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Cache\CacheItem;
 
 class ProductController extends AbstractController
 {
@@ -35,7 +36,8 @@ class ProductController extends AbstractController
 
         $idCache = "product_list_{$page}_{$limit}";
 
-        $data = $cache->get($idCache, function () use ($productRepository, $page, $limit) {
+        $data = $cache->get($idCache, function (CacheItem $item) use ($productRepository, $page, $limit) {
+            $item->tag("products");
             return $productRepository->findAllWithPagination($page, $limit);
         });
 
@@ -67,7 +69,8 @@ class ProductController extends AbstractController
         Request $request, 
         ValidatorInterface $validator,
         SerializerInterface $serializer,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        TagAwareCacheInterface $cache
     ): JsonResponse
     {
         $data = $serializer->deserialize($request->getContent(), Product::class, "json");
@@ -80,6 +83,8 @@ class ProductController extends AbstractController
 
         $em->persist($data);
         $em->flush();
+
+        $cache->invalidateTags(["products"]);
 
         return $this->json($data, 201);
     }
@@ -100,7 +105,8 @@ class ProductController extends AbstractController
         Request $request, 
         ValidatorInterface $validator,
         SerializerInterface $serializer,
-        ProductRepository $productRepository
+        ProductRepository $productRepository,
+        TagAwareCacheInterface $cache
     ): JsonResponse
     {
         $data = $serializer->deserialize($request->getContent(), Product::class, "json", ['object_to_populate' => $product]);
@@ -113,6 +119,8 @@ class ProductController extends AbstractController
 
         $productRepository->save($data, true);
 
+        $cache->invalidateTags(["products"]);
+
         return $this->json($data, 201);
     }
 
@@ -124,8 +132,10 @@ class ProductController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'app_product_delete', methods: ['DELETE'])]
-    public function delete(Product $product, ProductRepository $productRepository, EntityManagerInterface $m): JsonResponse
+    public function delete(Product $product, ProductRepository $productRepository, EntityManagerInterface $m, TagAwareCacheInterface $cache): JsonResponse
     {
+        $cache->invalidateTags(["products"]);
+        
         $m->remove($product);
         $m->flush();
         return $this->json(null, 204);

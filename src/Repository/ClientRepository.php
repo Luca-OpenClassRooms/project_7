@@ -61,7 +61,7 @@ class ClientRepository extends ServiceEntityRepository implements PasswordUpgrad
         $offset = ($page - 1) * $limit;
 
         return $this->createQueryBuilder('cu')
-            ->orderBy('cu.id', 'ASC')
+            ->orderBy('cu.id', 'DESC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()

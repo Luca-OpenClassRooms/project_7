@@ -44,7 +44,7 @@ class ClientUserRepository extends ServiceEntityRepository
         $offset = ($page - 1) * $limit;
 
         return $this->createQueryBuilder('cu')
-            ->orderBy('cu.id', 'ASC')
+            ->orderBy('cu.id', 'DESC')
             ->where('cu.client = :clientId')
             ->setFirstResult($offset)
             ->setMaxResults($limit)

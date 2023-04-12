@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
+
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Symfony\Component\Cache\CacheItem;
@@ -10,26 +13,46 @@ use Doctrine\ORM\EntityManagerInterface;
 use JMS\Serializer\SerializationContext;
 use JMS\Serializer\DeserializationContext;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Serializer\SerializerInterface as SerializerSerializerInterface;
+use Symfony\Component\HttpFoundation\Response;
 
+#[OA\Tag(name: "Product")]
 class ProductController extends AbstractController
 {
     /**
      * Get all products
-     *
+     * 
      * @param ProductRepository $productRepository
      * @param Request $request
      * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/products', name: 'app_products', methods: ['GET'])]
+    #[OA\Response(
+        response: 200,
+        description: "Returns all products",
+        content: new OA\JsonContent(
+            type: "array",
+            items: new OA\Items(ref: new Model(type: Product::class, groups: ["product:read"]))
+        )
+    )]
+    #[OA\Parameter(
+        name: "page",
+        in: "query",
+        description: "The page number",
+        schema: new OA\Schema(type: "integer")
+    )]
+    #[OA\Parameter(
+        name: "limit",
+        in: "query",
+        description: "The number of products per page",
+        schema: new OA\Schema(type: "integer")
+    )]
     public function index(
         ProductRepository $productRepository, 
         Request $request, 

@@ -55,13 +55,13 @@ class ClientUser
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['client_user:read'])]
+    #[Groups(['client_user:read', "client_user:write"])]
     #[Assert\NotBlank]
     #[Assert\Length(min: 2, max: 255)]
     private ?string $first_name = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['client_user:read'])]
+    #[Groups(['client_user:read', "client_user:write"])]
     #[Assert\NotBlank]
     #[Assert\Length(min: 2, max: 255)]
     private ?string $last_name = null;
@@ -70,7 +70,7 @@ class ClientUser
     #[Assert\NotBlank]
     #[Assert\Length(min: 2, max: 255)]
     #[Assert\Email]
-    #[Groups(['client_user:read'])]
+    #[Groups(['client_user:read', "client_user:write"])]
     private ?string $email = null;
 
     #[ORM\ManyToOne(targetEntity: Client::class, fetch: 'LAZY')]

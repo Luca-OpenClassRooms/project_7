@@ -107,6 +107,11 @@ class ProductController extends AbstractController
      */
     #[Route('/api/products', name: 'app_product_create', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
+    #[OA\RequestBody(
+        description: "Product object that needs to be added to the store",
+        required: true,
+        content: new OA\JsonContent(ref: new Model(type: Product::class, groups: ["product:write"]))
+    )]
     public function store(
         Request $request, 
         ValidatorInterface $validator,
@@ -146,6 +151,11 @@ class ProductController extends AbstractController
      */
     #[Route('/api/products/{id}', name: 'app_product_update', methods: ['PUT'])]
     #[IsGranted('ROLE_ADMIN')]
+    #[OA\RequestBody(
+        description: "Product object that needs to be updated to the store",
+        required: true,
+        content: new OA\JsonContent(ref: new Model(type: Product::class, groups: ["product:write"]))
+    )]
     public function update(
         Product $product,
         Request $request, 
@@ -158,18 +168,22 @@ class ProductController extends AbstractController
         $context = DeserializationContext::create()->setGroups(['product:read'])->setAttribute('object_to_populate', $product);
         $data = $serializer->deserialize($request->getContent(), Product::class, "json", $context);
 
+        $product->setName($data->getName());
+        $product->setPrice($data->getPrice());
+        $product->setDescription($data->getDescription());
+
         $errors = $validator->validate($data);
         
         if ( $errors->count() > 0) {
             return new JsonResponse($serializer->serialize($errors, "json"), 400, [], true);
         }
 
-        $productRepository->save($data, true);
+        $productRepository->save($product, true);
 
         $cache->invalidateTags(["products"]);
 
         $context = SerializationContext::create()->setGroups(['product:read']);
-        $data = $serializer->serialize($data, "json", $context);
+        $data = $serializer->serialize($product, "json", $context);
 
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }

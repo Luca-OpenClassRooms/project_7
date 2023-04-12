@@ -134,6 +134,11 @@ class UserController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/clients/{id}/users', name: 'app_client_user_create', methods: ['POST'])]
+    #[OA\RequestBody(
+        description: "User object that needs to be added to the store",
+        required: true,
+        content: new OA\JsonContent(ref: new Model(type: ClientUser::class, groups: ["client_user:write"]))
+    )]
     public function create(
         Client $client,
         Request $request,
@@ -192,6 +197,11 @@ class UserController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/clients/{client}/users/{client_user}', name: 'app_client_user_update', methods: ['PUT'])]
+    #[OA\RequestBody(
+        description: "User object that needs to be updated to the store",
+        required: true,
+        content: new OA\JsonContent(ref: new Model(type: ClientUser::class, groups: ["client_user:write"]))
+    )]
     public function update(
         Client $client,
         ClientUser $client_user,

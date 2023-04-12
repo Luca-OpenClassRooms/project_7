@@ -4,16 +4,20 @@ namespace App\Controller;
 
 use App\Entity\Product;
 use App\Repository\ProductRepository;
+use Symfony\Component\Cache\CacheItem;
+use JMS\Serializer\SerializerInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use JMS\Serializer\SerializationContext;
+use JMS\Serializer\DeserializationContext;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Cache\CacheItem;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Serializer\SerializerInterface as SerializerSerializerInterface;
 
 class ProductController extends AbstractController
 {
@@ -29,7 +33,8 @@ class ProductController extends AbstractController
     public function index(
         ProductRepository $productRepository, 
         Request $request, 
-        TagAwareCacheInterface $cache
+        TagAwareCacheInterface $cache,
+        SerializerInterface $serializer
     ): JsonResponse
     {
         $page = $request->query->get("page", 1);
@@ -42,19 +47,29 @@ class ProductController extends AbstractController
             return $productRepository->findAllWithPagination($page, $limit);
         });
 
-        return $this->json($data, 200, [], ['groups' => 'product:read']);
+        $context = SerializationContext::create()->setGroups(['product:read']);
+        $data = $serializer->serialize($data, "json", $context);
+
+        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
     /**
      * Get one product 
      * 
      * @param Product $product
+     * @param SerializerInterface $serializer
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'app_product', methods: ['GET'])]
-    public function show(Product $product): JsonResponse
+    public function show(
+        Product $product,
+        SerializerInterface $serializer
+    ): JsonResponse
     {
-        return $this->json($product, 200, [], ['groups' => 'product:read']);
+        $context = SerializationContext::create()->setGroups(['product:read']);
+        $data = $serializer->serialize($product, "json", $context);
+
+        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }   
 
     /**
@@ -63,6 +78,8 @@ class ProductController extends AbstractController
      * @param Request $request
      * @param ValidatorInterface $validator
      * @param SerializerInterface $serializer
+     * @param EntityManagerInterface $em
+     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/products', name: 'app_product_create', methods: ['POST'])]
@@ -88,7 +105,7 @@ class ProductController extends AbstractController
 
         $cache->invalidateTags(["products"]);
 
-        return $this->json($data, 201);
+        return $this->json($data, Response::HTTP_CREATED);
     }
 
     /**
@@ -112,7 +129,8 @@ class ProductController extends AbstractController
         TagAwareCacheInterface $cache
     ): JsonResponse
     {
-        $data = $serializer->deserialize($request->getContent(), Product::class, "json", ['object_to_populate' => $product]);
+        $context = DeserializationContext::create()->setGroups(['product:read'])->setAttribute('object_to_populate', $product);
+        $data = $serializer->deserialize($request->getContent(), Product::class, "json", $context);
 
         $errors = $validator->validate($data);
         
@@ -124,19 +142,20 @@ class ProductController extends AbstractController
 
         $cache->invalidateTags(["products"]);
 
-        return $this->json($data, 200);
+        return $this->json($data, Response::HTTP_OK);
     }
 
     /**
      * Delete a product
      * 
      * @param Product $product
-     * @param ProductRepository $productRepository
+     * @param EntityManagerInterface $m
+     * @param TagAwareCacheInterface $cache
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'app_product_delete', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(Product $product, ProductRepository $productRepository, EntityManagerInterface $m, TagAwareCacheInterface $cache): JsonResponse
+    public function delete(Product $product, EntityManagerInterface $m, TagAwareCacheInterface $cache): JsonResponse
     {
         $cache->invalidateTags(["products"]);
         

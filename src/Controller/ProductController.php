@@ -128,7 +128,10 @@ class ProductController extends AbstractController
 
         $cache->invalidateTags(["products"]);
 
-        return $this->json($data, Response::HTTP_CREATED);
+        $context = SerializationContext::create()->setGroups(['product:read']);
+        $data = $serializer->serialize($data, "json", $context);
+
+        return new JsonResponse($data, Response::HTTP_CREATED, [], true);
     }
 
     /**
@@ -165,7 +168,10 @@ class ProductController extends AbstractController
 
         $cache->invalidateTags(["products"]);
 
-        return $this->json($data, Response::HTTP_OK);
+        $context = SerializationContext::create()->setGroups(['product:read']);
+        $data = $serializer->serialize($data, "json", $context);
+
+        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
     /**
@@ -184,6 +190,6 @@ class ProductController extends AbstractController
         
         $m->remove($product);
         $m->flush();
-        return $this->json(null, 204);
+        return $this->json(null, Response::HTTP_NO_CONTENT);
     }
 }

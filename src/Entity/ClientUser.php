@@ -4,9 +4,47 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\ClientUserRepository;
-use Symfony\Component\Serializer\Annotation\Groups;
+use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Hateoas\Configuration\Annotation as Hateoas;
 
+/**
+ * @Hateoas\Relation(
+ *      "self",
+ *      href = @Hateoas\Route(
+ *          "app_client_user_show",
+ *          parameters = { 
+ *              "client" = "expr(object.getClientId())",
+ *              "client_user" = "expr(object.getId())" 
+ *          }
+ *      ),
+ *      exclusion = @Hateoas\Exclusion(groups="client_user:read")
+ * )
+ * 
+ * @Hateoas\Relation(
+ *      "delete",
+ *      href = @Hateoas\Route(
+ *          "app_client_user_delete",
+ *          parameters = { 
+ *              "client" = "expr(object.getClientId())",
+ *              "client_user" = "expr(object.getId())" 
+ *          }
+ *      ),
+ *      exclusion = @Hateoas\Exclusion(groups="client_user:read")
+ * )
+ * 
+ * @Hateoas\Relation(
+ *      "update",
+ *      href = @Hateoas\Route(
+ *          "app_client_user_update",
+ *          parameters = { 
+ *              "client" = "expr(object.getClientId())",
+ *              "client_user" = "expr(object.getId())" 
+ *          }
+ *      ),
+ *      exclusion = @Hateoas\Exclusion(groups="client_user:read")
+ * )
+ */
 #[ORM\Entity(repositoryClass: ClientUserRepository::class)]
 class ClientUser
 {
@@ -38,6 +76,11 @@ class ClientUser
     #[ORM\ManyToOne(targetEntity: Client::class, fetch: 'LAZY')]
     #[ORM\JoinColumn(onDelete: "CASCADE")]
     private ?Client $client;
+
+    public function getClientId(): ?int
+    {
+        return $this->client->getId();
+    }
 
     public function getId(): ?int
     {

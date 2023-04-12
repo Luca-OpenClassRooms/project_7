@@ -13,6 +13,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Cache\CacheItem;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class ProductController extends AbstractController
 {
@@ -65,6 +66,7 @@ class ProductController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/products', name: 'app_product_create', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function store(
         Request $request, 
         ValidatorInterface $validator,
@@ -100,6 +102,7 @@ class ProductController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'app_product_update', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function update(
         Product $product,
         Request $request, 
@@ -121,7 +124,7 @@ class ProductController extends AbstractController
 
         $cache->invalidateTags(["products"]);
 
-        return $this->json($data, 201);
+        return $this->json($data, 200);
     }
 
     /**
@@ -132,6 +135,7 @@ class ProductController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/products/{id}', name: 'app_product_delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(Product $product, ProductRepository $productRepository, EntityManagerInterface $m, TagAwareCacheInterface $cache): JsonResponse
     {
         $cache->invalidateTags(["products"]);

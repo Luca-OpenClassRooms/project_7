@@ -2,47 +2,66 @@
 
 namespace App\Controller\Client;
 
+use App\Entity\Client;
 use App\Entity\ClientUser;
 use App\Repository\ClientUserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Core\Security;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
 
 class UserController extends AbstractController
 {
-    #[Route('/api/client/users', name: 'app_client_user', methods: ['GET'])]
+    private function checkAccess(Client $client): bool
+    {
+        $clientId = $this->getUser()->getId();
+
+        if( $client->getId() !== $clientId ) {
+            throw new AccessDeniedHttpException('You are not allowed to access this resource');
+        }
+
+        return true;
+    }
+
+    #[Route('/api/clients/{id}/users', name: 'app_client_user', methods: ['GET'])]
     public function index(
         ClientUserRepository $clientUserRepository, 
         Request $request, 
+        Client $client,
         TagAwareCacheInterface $cache,
     ): JsonResponse
     {
+        $this->checkAccess($client);
+
         $page = $request->query->get("page", 1);
         $limit = $request->query->get("limit", 10);
+        
+        $idCache = "client_{$client->getId()}_users_{$page}_{$limit}";
 
-        $clientId = $this->getUser()->getId();
-
-        $idCache = "client_{$clientId}_users_{$page}_{$limit}";
-
-        $data = $cache->get($idCache, function (ItemInterface $item) use ($clientUserRepository, $page, $limit, $clientId) {
-            $item->tag("client_{$clientId}");
-            return $clientUserRepository->findAllWithPagination($clientId, $page, $limit);
+        $data = $cache->get($idCache, function (ItemInterface $item) use ($clientUserRepository, $page, $limit, $client) {
+            $item->tag("client_{$client->getId()}");
+            return $clientUserRepository->findAllWithPagination($client->getId(), $page, $limit);
         });
 
         return $this->json($data, 200, [], ['groups' => 'client_user:read']);
     }
 
-    #[Route('/api/client/users/{id}', name: 'app_client_user_show', methods: ['GET'])]
-    public function show(ClientUser $clientUser): JsonResponse
+    #[Route('/api/clients/{client}/users/{client_user}', name: 'app_client_user_show', methods: ['GET'] )]
+    public function show(Client $client, ClientUser $client_user): JsonResponse
     {
-        return $this->json($clientUser, 200, [], ['groups' => 'client_user:read']);
+        $this->checkAccess($client);
+
+        if( $client_user->getClient()->getId() !== $client->getId() ) {
+            throw new AccessDeniedHttpException('You are not allowed to access this resource');
+        }
+
+        return $this->json($client_user, 200, [], ['groups' => 'client_user:read']);
     }
 
     /**
@@ -54,8 +73,9 @@ class UserController extends AbstractController
      * @param ValidatorInterface $validator
      * @return JsonResponse
      */
-    #[Route('/api/client/users', name: 'app_client_user_create', methods: ['POST'])]
+    #[Route('/api/clients/{id}/users', name: 'app_client_user_create', methods: ['POST'])]
     public function create(
+        Client $client,
         Request $request,
         SerializerInterface $serializer,
         EntityManagerInterface $entityManager,
@@ -63,6 +83,8 @@ class UserController extends AbstractController
         TagAwareCacheInterface $cache
     ): JsonResponse
     {
+        $this->checkAccess($client);
+
         $data = $request->getContent();
 
         $clientUser = $serializer->deserialize($data, ClientUser::class, 'json');
@@ -105,9 +127,10 @@ class UserController extends AbstractController
      * 
      * @return JsonResponse
      */
-    #[Route('/api/client/users/{id}', name: 'app_client_user_update', methods: ['PUT'])]
+    #[Route('/api/clients/{client}/users/{client_user}', name: 'app_client_user_update', methods: ['PUT'])]
     public function update(
-        ClientUser $clientUser,
+        Client $client,
+        ClientUser $client_user,
         Request $request, 
         ValidatorInterface $validator,
         SerializerInterface $serializer,
@@ -115,7 +138,13 @@ class UserController extends AbstractController
         TagAwareCacheInterface $cache
     ): JsonResponse
     {
-        $data = $serializer->deserialize($request->getContent(), ClientUser::class, "json", ['object_to_populate' => $clientUser]);
+        $this->checkAccess($client);
+
+        if( $client_user->getClient()->getId() !== $client->getId() ) {
+            throw new AccessDeniedHttpException('You are not allowed to access this resource');
+        }
+
+        $data = $serializer->deserialize($request->getContent(), ClientUser::class, "json", ['object_to_populate' => $client_user]);
 
         $errors = $validator->validate($data);
         
@@ -125,9 +154,9 @@ class UserController extends AbstractController
 
         $clientUserRepository->save($data, true);
 
-        $cache->invalidateTags(["client_{$clientUser->getClient()->getId()}"]);
+        $cache->invalidateTags(["client_{$client_user->getClient()->getId()}"]);
 
-        return $this->json($data, 201, [], ['groups' => 'client_user:read']);
+        return $this->json($data, 200, [], ['groups' => 'client_user:read']);
     }
 
     /**
@@ -137,15 +166,22 @@ class UserController extends AbstractController
      * @param EntityManagerInterface $entityManager
      * @return JsonResponse
      */
-    #[Route('/api/client/users/{id}', name: 'app_client_user_delete', methods: ['DELETE'])]
+    #[Route('/api/clients/{client}/users/{client_user}', name: 'app_client_user_delete', methods: ['DELETE'])]
     public function delete(
-        ClientUser $clientUser,
+        Client $client,
+        ClientUser $client_user,
         EntityManagerInterface $entityManager,
         TagAwareCacheInterface $cache
     ): JsonResponse
     {
-        $cache->invalidateTags(["client_{$clientUser->getClient()->getId()}"]);
-        $entityManager->remove($clientUser);
+        $this->checkAccess($client);
+
+        if( $client_user->getClient()->getId() !== $client->getId() ) {
+            throw new AccessDeniedHttpException('You are not allowed to access this resource');
+        }
+
+        $cache->invalidateTags(["client_{$client_user->getClient()->getId()}"]);
+        $entityManager->remove($client_user);
         $entityManager->flush();
 
         return $this->json(null, 204);

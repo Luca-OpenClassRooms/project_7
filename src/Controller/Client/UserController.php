@@ -20,6 +20,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
 
 #[OA\Tag(name: "Client User")]
@@ -35,8 +36,12 @@ class UserController extends AbstractController
     {
         $clientId = $this->getUser()->getId();
 
+        if( in_array("ROLE_ADMIN", $this->getUser()->getRoles())  ) {
+            return true;
+        }
+
         if( $client->getId() !== $clientId ) {
-            throw new AccessDeniedHttpException('You are not allowed to access this resource');
+            throw new AccessDeniedHttpException('You are not allowed to access this resource.');
         }
 
         return true;
@@ -168,9 +173,7 @@ class UserController extends AbstractController
         ]);
 
         if ($emailAlreadyExists) {
-            return $this->json([
-                'message' => 'Email already exists'
-            ], 400);
+            throw new BadRequestHttpException('Email already exists.');
         }
 
         $entityManager->persist($clientUser);
